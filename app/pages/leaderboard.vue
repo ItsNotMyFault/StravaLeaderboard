@@ -44,7 +44,9 @@
           <td class="py-2">{{ i + 1 }}</td>
           <td class="py-2 font-semibold">{{ athlete.name }}</td>
           <td class="py-2">{{ athlete.totalKm.toFixed(1) }}</td>
-          <td class="py-2 text-orange-700 font-bold">{{ athlete.coupleWeightedKm.toFixed(1) }}</td>
+          <td class="py-2 text-orange-700 font-bold">
+            {{ athlete.coupleWeightedKm.toFixed(1) }}
+          </td>
           <td class="py-2">{{ athlete.coupleKm.toFixed(1) }}</td>
           <td class="py-2">{{ athlete.count }}</td>
           <td class="py-2">{{ formatTime(athlete.totalMovingTime) }}</td>
@@ -66,7 +68,7 @@
           class="absolute top-2 right-2 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded shadow"
           title="Weighted KM"
         >
-      {{ getWeightedKm(activity).toFixed(1) }} km
+          {{ getWeightedKm(activity).toFixed(1) }} km
         </span>
 
         <div class="flex items-center gap-2">
@@ -308,6 +310,14 @@ const couplePairs = [
   { a: "émilie", b: "will" },
 ];
 
+function normalize(str: string) {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/\s+/g, ""); // Remove spaces
+}
+
 // Athlete leaderboard computed from activitiesRef
 const athleteLeaderboard = computed(() => {
   if (!activitiesRef.value || !Array.isArray(activitiesRef.value)) return [];
@@ -323,7 +333,7 @@ const athleteLeaderboard = computed(() => {
       name: string;
       totalKm: number;
       coupleWeightedKm: number; // weighted km with couple multiplier
-      coupleKm: number;         // raw km for couple activities
+      coupleKm: number; // raw km for couple activities
       count: number;
       totalMovingTime: number;
     }
@@ -335,7 +345,9 @@ const athleteLeaderboard = computed(() => {
 
     // Couple rule: check if activity name mentions the couple pair
     const isCouple = couplePairs.some(
-      (pair) => athleteFirst === pair.a && activityNameLower.includes(pair.b)
+      (pair) =>
+        normalize(athleteFirst) === normalize(pair.a) &&
+        normalize(activityNameLower).includes(normalize(pair.b))
     );
 
     const name = `${activity.athlete.firstname} ${activity.athlete.lastname}`;
@@ -366,7 +378,9 @@ const athleteLeaderboard = computed(() => {
     activity.isCouple = isCouple;
   }
 
-  return Array.from(map.values()).sort((a, b) => b.coupleWeightedKm - a.coupleWeightedKm);
+  return Array.from(map.values()).sort(
+    (a, b) => b.coupleWeightedKm - a.coupleWeightedKm
+  );
 });
 
 const clubMembers = ref([]);
