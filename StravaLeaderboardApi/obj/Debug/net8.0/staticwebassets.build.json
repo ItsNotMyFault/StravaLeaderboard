@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "dVbptuTkbqf9je36qYq3727a6CL8tQ1s1JsvbsnPu2U=",
+  "Source": "StravaLeaderboardApi",
+  "BasePath": "_content/StravaLeaderboardApi",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
