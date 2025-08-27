@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 max-w-3xl mx-auto">
+  <div class="p-6 mx-auto">
     <div class="flex items-end gap-3 mb-4">
       <div>
         <label class="block text-sm">Start</label>
@@ -20,39 +20,86 @@
       </button>
     </div>
 
-    <h2 class="mt-8 mb-4 text-xl font-bold text-orange-600">
-      Athlete Leaderboard {{ LIMIT ? `(${LIMIT})` : "" }}
-    </h2>
-    <table class="w-full border-collapse mb-8">
-      <thead>
-        <tr class="text-left border-b">
-          <th class="py-2">#</th>
-          <th class="py-2">Athlete</th>
-          <th class="py-2">Total KM</th>
-          <th class="py-2 text-orange-700 font-bold">Weighted KM</th>
-          <th class="py-2">Couple KM</th>
-          <th class="py-2">Activities</th>
-          <th class="py-2">Total Moving Time</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          v-for="(athlete, i) in athleteLeaderboard"
-          :key="athlete.name"
-          class="border-b"
-        >
-          <td class="py-2">{{ i + 1 }}</td>
-          <td class="py-2 font-semibold">{{ athlete.name }}</td>
-          <td class="py-2">{{ athlete.totalKm.toFixed(1) }}</td>
-          <td class="py-2 text-orange-700 font-bold">
-            {{ athlete.coupleWeightedKm.toFixed(1) }}
-          </td>
-          <td class="py-2">{{ athlete.coupleKm.toFixed(1) }}</td>
-          <td class="py-2">{{ athlete.count }}</td>
-          <td class="py-2">{{ formatTime(athlete.totalMovingTime) }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <!-- Grid layout for leaderboard and modifiers -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+      <!-- Athlete Leaderboard - takes 3 columns on large screens -->
+      <div class="lg:col-span-3">
+        <h2 class="mb-4 text-xl font-bold text-orange-600">
+          Athlete Leaderboard {{ LIMIT ? `(${LIMIT})` : "" }}
+        </h2>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr class="text-left border-b">
+                <th class="py-2">#</th>
+                <th class="py-2">Athlete</th>
+                <th class="py-2">Total KM</th>
+                <th class="py-2 text-orange-700 font-bold">Weighted KM</th>
+                <th class="py-2">Couple KM</th>
+                <th class="py-2">Activities</th>
+                <th class="py-2">Total Moving Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(athlete, i) in athleteLeaderboard"
+                :key="athlete.name"
+                class="border-b"
+              >
+                <td class="py-2">{{ i + 1 }}</td>
+                <td class="py-2 font-semibold">{{ athlete.name }}</td>
+                <td class="py-2">{{ athlete.totalKm.toFixed(1) }}</td>
+                <td class="py-2 text-orange-700 font-bold">
+                  {{ athlete.coupleWeightedKm.toFixed(1) }}
+                </td>
+                <td class="py-2">{{ athlete.coupleKm.toFixed(1) }}</td>
+                <td class="py-2">{{ athlete.count }}</td>
+                <td class="py-2">{{ formatTime(athlete.totalMovingTime) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sport Type Modifiers - takes 1 column on large screens -->
+      <div class="lg:col-span-1">
+        <h3 class="text-lg font-bold text-orange-600 mb-2">
+          Sport Type Modifiers
+        </h3>
+        <div class="bg-white rounded shadow overflow-hidden">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr class="bg-orange-50 text-left">
+                <th class="py-2 px-3 text-sm">Sport Type</th>
+                <th class="py-2 px-3 text-sm">Modifier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 px-3 text-sm">Couple Activity</td>
+                <td class="py-2 px-3 text-sm font-semibold">×2</td>
+              </tr>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 px-3 text-sm">Ride</td>
+                <td class="py-2 px-3 text-sm font-semibold">×0.25</td>
+              </tr>
+              <tr
+                v-for="sport in waterSports"
+                :key="sport"
+                class="border-b border-gray-100"
+              >
+                <td class="py-2 px-3 text-sm">{{ sport }}</td>
+                <td class="py-2 px-3 text-sm font-semibold">×2</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-3 text-sm">Other</td>
+                <td class="py-2 px-3 text-sm font-semibold">×1</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
     <h2 class="mt-8 mb-4 text-xl font-bold text-orange-600">
       Recent Club Activities {{ LIMIT ? `(${LIMIT})` : "" }}
@@ -127,7 +174,6 @@
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import { useAuth } from "@/composables/useAuth";
