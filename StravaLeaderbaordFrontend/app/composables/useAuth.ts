@@ -3,7 +3,7 @@ import { useAuthStore } from "@/stores/auth";
 export function useAuth() {
   const store = useAuthStore();
 
-  function setAccessToken(token: string) {
+  function setAccessToken(token: string | null) {
     store.setAccessToken(token);
   }
 

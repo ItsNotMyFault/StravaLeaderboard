@@ -6,7 +6,7 @@ export const useAuthStore = defineStore("auth", {
     accessToken: useCookies().get("access_token") || null,
   }),
   actions: {
-    setAccessToken(token: string) {
+    setAccessToken(token: string | null) {
       this.accessToken = token;
       useCookies().set("access_token", token, { path: "/" });
     },
