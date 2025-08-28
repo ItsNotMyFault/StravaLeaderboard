@@ -1,181 +1,149 @@
 <template>
   <div class="p-6 mx-auto">
-    <div class="flex items-end gap-3 mb-4">
+    <div class="flex items-center gap-3 mb-4">
+      <button @click="disconnectStrava" class="px-3 py-2 border rounded">
+        Disconnect Strava
+      </button>
       <div>
-        <label class="block text-sm">Start</label>
-        <input v-model="start" type="date" class="border rounded px-2 py-1" />
+        {{ limitStatus }}
+        <input class="border border-gray-300" v-model="LIMIT" @update:modelValue="debouncedFetchActivities"></input>
       </div>
-      <div>
-        <label class="block text-sm">End</label>
-        <input v-model="end" type="date" class="border rounded px-2 py-1" />
-      </div>
-      <button @click="load" class="px-3 py-2 border rounded">
-        Load Leaderboard
-      </button>
-      <button @click="getActivity" class="px-3 py-2 border rounded">
-        getActivity
-      </button>
-      <button @click="connectStrava" class="px-3 py-2 border rounded">
-        Connect Strava
-      </button>
     </div>
 
     <!-- Grid layout for leaderboard and modifiers -->
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-      <!-- Athlete Leaderboard - takes 3 columns on large screens -->
-      <div class="lg:col-span-3">
-        <h2 class="mb-4 text-xl font-bold text-orange-600">
-          Athlete Leaderboard {{ LIMIT ? `(${LIMIT})` : "" }}
-        </h2>
-        <div class="overflow-x-auto">
-          <table class="w-full border-collapse">
-            <thead>
-              <tr class="text-left border-b">
-                <th class="py-2">#</th>
-                <th class="py-2">Athlete</th>
-                <th class="py-2">Total KM</th>
-                <th class="py-2 text-orange-700 font-bold">Weighted KM</th>
-                <th class="py-2">Couple KM</th>
-                <th class="py-2">Activities</th>
-                <th class="py-2">Total Moving Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(athlete, i) in athleteLeaderboard"
-                :key="athlete.name"
-                class="border-b"
-              >
-                <td class="py-2">{{ i + 1 }}</td>
-                <td class="py-2 font-semibold">{{ athlete.name }}</td>
-                <td class="py-2">{{ athlete.totalKm.toFixed(1) }}</td>
-                <td class="py-2 text-orange-700 font-bold">
-                  {{ athlete.coupleWeightedKm.toFixed(1) }}
-                </td>
-                <td class="py-2">{{ athlete.coupleKm.toFixed(1) }}</td>
-                <td class="py-2">{{ athlete.count }}</td>
-                <td class="py-2">{{ formatTime(athlete.totalMovingTime) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+    <div v-if="loading" class="flex justify-center items-center h-64">
+      <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-MAX_PER_PAGE h-16 w-16"></div>
 
-      <!-- Sport Type Modifiers - takes 1 column on large screens -->
-      <div class="lg:col-span-1">
-        <h3 class="text-lg font-bold text-orange-600 mb-2">
-          Sport Type Modifiers
-        </h3>
-        <div class="bg-white rounded shadow overflow-hidden">
-          <table class="w-full border-collapse">
-            <thead>
-              <tr class="bg-orange-50 text-left">
-                <th class="py-2 px-3 text-sm">Sport Type</th>
-                <th class="py-2 px-3 text-sm">Modifier</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="border-b border-gray-100">
-                <td class="py-2 px-3 text-sm">Couple Activity</td>
-                <td class="py-2 px-3 text-sm font-semibold">×2</td>
-              </tr>
-              <tr class="border-b border-gray-100">
-                <td class="py-2 px-3 text-sm">Ride</td>
-                <td class="py-2 px-3 text-sm font-semibold">×0.25</td>
-              </tr>
-              <tr
-                v-for="sport in waterSports"
-                :key="sport"
-                class="border-b border-gray-100"
-              >
-                <td class="py-2 px-3 text-sm">{{ sport }}</td>
-                <td class="py-2 px-3 text-sm font-semibold">×2</td>
-              </tr>
-              <tr>
-                <td class="py-2 px-3 text-sm">Other</td>
-                <td class="py-2 px-3 text-sm font-semibold">×1</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
-
-    <h2 class="mt-8 mb-4 text-xl font-bold text-orange-600">
-      Recent Club Activities {{ LIMIT ? `(${LIMIT})` : "" }}
-    </h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div
-        v-for="(activity, i) in activitiesRef"
-        :key="i"
-        class="relative rounded-lg shadow-md p-4 bg-white border border-orange-100 flex flex-col gap-2"
-      >
-        <!-- Weighted KM badge -->
-        <span
-          class="absolute top-2 right-2 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded shadow"
-          title="Weighted KM"
-        >
-          {{ getWeightedKm(activity).toFixed(1) }} km
-        </span>
-
-        <div class="flex items-center gap-2">
-          <span class="text-2xl">{{ getSportIcon(activity.sport_type) }}</span>
-          <span class="font-semibold text-lg">{{ activity.name }}</span>
-        </div>
-        <div class="text-xs text-gray-500">
-          {{
-            activity?.start_date
-              ? new Date(activity.start_date).toLocaleString()
-              : "no date"
-          }}
-        </div>
-        <div class="text-gray-700">
-          <span class="font-medium"
-            >{{ activity.athlete.firstname }}
-            {{ activity.athlete.lastname }}</span
-          >
-          <span
-            class="ml-2 px-2 py-1 rounded bg-orange-50 text-orange-700 text-xs"
-            >{{ activity.sport_type }}</span
-          >
-          <div v-if="activity.isCouple" class="text-xs text-pink-600 font-bold">
-            Couple Activity 💑
+    <template v-if="!loading">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Athlete Leaderboard - takes 3 columns on large screens -->
+        <div class="lg:col-span-3">
+          <h2 class="mb-4 text-xl font-bold text-orange-600">
+            Athlete Leaderboard {{ LIMIT ? `(${LIMIT})` : "" }}
+          </h2>
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+              <thead>
+                <tr class="text-left border-b">
+                  <th class="py-2">#</th>
+                  <th class="py-2">Athlete</th>
+                  <th class="py-2">Total KM</th>
+                  <th class="py-2 text-orange-700 font-bold">Weighted KM</th>
+                  <th class="py-2">Couple KM</th>
+                  <th class="py-2">Activities</th>
+                  <th class="py-2">Total Moving Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(athlete, i) in athleteLeaderboard" :key="athlete.name" class="border-b">
+                  <td class="py-2">{{ i + 1 }}</td>
+                  <td class="py-2 font-semibold">{{ athlete.name }}</td>
+                  <td class="py-2">{{ athlete.totalKm.toFixed(1) }}</td>
+                  <td class="py-2 text-orange-700 font-bold">
+                    {{ athlete.coupleWeightedKm.toFixed(1) }}
+                  </td>
+                  <td class="py-2">{{ athlete.coupleKm.toFixed(1) }}</td>
+                  <td class="py-2">{{ athlete.count }}</td>
+                  <td class="py-2">{{ formatTime(athlete.totalMovingTime) }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
-        <div class="flex gap-4 mt-2 text-sm">
-          <span
-            >Distance:
-            <span class="font-bold"
-              >{{ (activity.distance / 1000).toFixed(1) }} km</span
-            ></span
-          >
-          <span
-            >Elevation:
-            <span class="font-bold"
-              >{{ activity.total_elevation_gain }} m</span
-            ></span
-          >
-        </div>
-        <div class="flex gap-4 text-sm">
-          <span
-            >Moving Time:
-            <span class="font-bold">{{
-              formatTime(activity.moving_time)
-            }}</span></span
-          >
-          <span
-            >Elapsed:
-            <span class="font-bold">{{
-              formatTime(activity.elapsed_time)
-            }}</span></span
-          >
+
+        <!-- Sport Type Modifiers - takes 1 column on large screens -->
+        <div class="lg:col-span-1">
+          <h3 class="text-lg font-bold text-orange-600 mb-2">
+            Sport Type Modifiers
+          </h3>
+          <div class="bg-white rounded shadow overflow-hidden">
+            <table class="w-full border-collapse">
+              <thead>
+                <tr class="bg-orange-50 text-left">
+                  <th class="py-2 px-3 text-sm">Sport Type</th>
+                  <th class="py-2 px-3 text-sm">Modifier</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-b border-gray-100">
+                  <td class="py-2 px-3 text-sm">Couple Activity</td>
+                  <td class="py-2 px-3 text-sm font-semibold">×2</td>
+                </tr>
+                <tr class="border-b border-gray-100">
+                  <td class="py-2 px-3 text-sm">Ride</td>
+                  <td class="py-2 px-3 text-sm font-semibold">×0.25</td>
+                </tr>
+                <tr v-for="sport in waterSports" :key="sport" class="border-b border-gray-100">
+                  <td class="py-2 px-3 text-sm">{{ sport }}</td>
+                  <td class="py-2 px-3 text-sm font-semibold">×2</td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-3 text-sm">Other</td>
+                  <td class="py-2 px-3 text-sm font-semibold">×1</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+
+      <h2 class="mt-8 mb-4 text-xl font-bold text-orange-600">
+        Recent Club Activities {{ LIMIT ? `(${LIMIT})` : "" }}
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div v-for="(activity, i) in allActivities" :key="i"
+          class="relative rounded-lg shadow-md p-4 bg-white border border-orange-100 flex flex-col gap-2">
+          <!-- Weighted KM badge -->
+          <span class="absolute top-2 right-2 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded shadow"
+            title="Weighted KM">
+            {{ getWeightedKm(activity).toFixed(1) }} km
+          </span>
+
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">{{ getSportIcon(activity.sport_type) }}</span>
+            <span class="font-semibold text-lg">{{ activity.name }}</span>
+          </div>
+          <div class="text-xs text-gray-500">
+            {{
+              activity?.start_date
+                ? new Date(activity.start_date).toLocaleString()
+                : "no date"
+            }}
+          </div>
+          <div class="text-gray-700">
+            <span class="font-medium">{{ activity.athlete.firstname }}
+              {{ activity.athlete.lastname }}</span>
+            <span class="ml-2 px-2 py-1 rounded bg-orange-50 text-orange-700 text-xs">{{ activity.sport_type }}</span>
+            <div v-if="activity.isCouple" class="text-xs text-pink-600 font-bold">
+              Couple Activity 💑
+            </div>
+          </div>
+          <div class="flex gap-4 mt-2 text-sm">
+            <span>Distance:
+              <span class="font-bold">{{ (activity.distance / 1000).toFixed(1) }} km</span></span>
+            <span>Elevation:
+              <span class="font-bold">{{ activity.total_elevation_gain }} m</span></span>
+          </div>
+          <div class="flex gap-4 text-sm">
+            <span>Moving Time:
+              <span class="font-bold">{{
+                formatTime(activity.moving_time)
+                }}</span></span>
+            <span>Elapsed:
+              <span class="font-bold">{{
+                formatTime(activity.elapsed_time)
+                }}</span></span>
+          </div>
+        </div>
+      </div>
+
+    </template>
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
+import { useDebounceFn } from "@vueuse/core";
 import { useAuth } from "@/composables/useAuth";
 
 const { getAccessToken, setAccessToken } = useAuth();
@@ -189,9 +157,10 @@ const end = ref(new Date().toISOString().slice(0, 10));
 const rows = ref<{ athleteId: string; totalKm: number }[]>([]);
 const loading = ref(false);
 
-function connectStrava() {
-  window.location.href = "http://localhost:5086/auth/strava/login";
-}
+const disconnectStrava = () => {
+  setAccessToken(null);
+  navigateTo("/stravaLogin", { replace: true });
+};
 
 // Handle OAuth redirect and save access token
 onMounted(() => {
@@ -214,61 +183,62 @@ onMounted(() => {
   }
 });
 
-async function load() {
-  loading.value = true;
-  try {
-    const q = new URLSearchParams({
-      start: start.value,
-      end: end.value,
-    }).toString();
-    const res = await $fetch(`http://localhost:5086/leaderboard?${q}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${getAccessToken()}`,
-      },
-    });
-    console.log("res", res);
-    rows.value = (res as any[]).sort((a, b) => b.totalKm - a.totalKm);
-  } finally {
-    loading.value = false;
-  }
-}
-
-const activityId = 15586923826;
 const clubId = "piedsIntenses";
 
-const activitiesRef = ref();
+const allActivities = ref<any[]>([]);
 
-async function getActivity() {
-  const response = await fetch(
-    `https://www.strava.com/api/v3/activities/${activityId}?include_all_efforts=true`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${getAccessToken()}`,
-      },
+const activityCountSinceChallengeStart = computed(() => {
+  return allActivities.value.findIndex(x => x.name.includes("Challenge STARTS TOMORROW"));
+});
+
+const limitStatus = computed(() => {
+  if(activityCountSinceChallengeStart.value < 0) return 'Try a bigger LIMIT';
+  if(allActivities.value?.length - activityCountSinceChallengeStart.value -1 === 0) return 'This is the perfect amount of activities!';
+  if(activityCountSinceChallengeStart.value > 0) return`You can remove ${allActivities.value?.length - activityCountSinceChallengeStart.value -1} activities`;
+
+});
+
+const LIMIT = ref(150);
+
+// Debounced fetch function
+const debouncedFetchActivities = useDebounceFn(async () => {
+  console.log('debounce', LIMIT.value);
+  await fetchLIMITActivities();
+}, 300); // 500ms debounce
+
+watch(() => LIMIT.value, (newVal) => {
+  console.log('newVal', newVal);
+  LIMIT.value = newVal;
+  debouncedFetchActivities();
+});
+
+const MAX_PER_PAGE = 200;//strava max per page api number
+
+async function fetchLIMITActivities() {
+  allActivities.value = []; // Reset activities before fetching
+  const totalLimit = LIMIT.value;
+  console.log('totalLimit', totalLimit);
+  const pageCount = Math.ceil(totalLimit / MAX_PER_PAGE);
+  console.log('pageCount', pageCount);
+  for (let page = 1; page <= pageCount; page++) {
+    if (page === pageCount) {
+      // const remaining = (MAX_PER_PAGE - (totalLimit % MAX_PER_PAGE)) % MAX_PER_PAGE;
+      const fullPageCount = Math.floor(totalLimit / MAX_PER_PAGE);
+      const listedItemsPreviously = fullPageCount * MAX_PER_PAGE;
+      const remaining = totalLimit -  (listedItemsPreviously);
+      await getRecentClubActivities(page, remaining);
+    } else {
+      await getRecentClubActivities(page, MAX_PER_PAGE);
     }
-  );
-
-  if (!response.ok) {
-    console.error(
-      "Error fetching activity:",
-      response.status,
-      await response.text()
-    );
-    return;
   }
-
-  const data = await response.json();
-  console.log("Activity data:", data);
 }
 
-const LIMIT = 150;
-
-async function getRecentClubActivities() {
-  const url = `https://www.strava.com/api/v3/clubs/${clubId}/activities?per_page=${LIMIT}`;
+async function getRecentClubActivities(page: number = 1, limit = LIMIT.value) {
+  console.log('limit', limit);
+  const url = `https://www.strava.com/api/v3/clubs/${clubId}/activities?per_page=${limit}&page=${page}`;
 
   try {
+    loading.value = true;
     const response = await fetch(url, {
       method: "GET",
       headers: {
@@ -282,19 +252,21 @@ async function getRecentClubActivities() {
     }
 
     const activities = await response.json();
-    activitiesRef.value = activities;
-    return activitiesRef.value;
+    allActivities.value = allActivities.value.concat(activities);
+    return allActivities.value;
   } catch (error) {
     console.error("Failed to fetch club activities:", error);
+    loading.value = false;
     return null;
+  } finally {
+    loading.value = false;
   }
 }
 
-getRecentClubActivities().then((data) =>
-  console.log("Recent Club Activities:", data)
-);
 
-getActivity();
+fetchLIMITActivities().then(() =>
+  console.log("Recent Club Activities:", allActivities.value)
+);
 
 function formatTime(seconds: number) {
   const h = Math.floor(seconds / 3600);
@@ -366,7 +338,7 @@ function normalize(str: string) {
 
 // Athlete leaderboard computed from activitiesRef
 const athleteLeaderboard = computed(() => {
-  if (!activitiesRef.value || !Array.isArray(activitiesRef.value)) return [];
+  if (!allActivities.value || !Array.isArray(allActivities.value)) return [];
   if (!clubMembers.value || !Array.isArray(clubMembers.value)) return [];
 
   const memberFirstNames = clubMembers.value
@@ -385,7 +357,7 @@ const athleteLeaderboard = computed(() => {
     }
   >();
 
-  for (const activity of activitiesRef.value) {
+  for (const activity of allActivities.value) {
     const athleteFirst = activity.athlete.firstname?.toLowerCase() || "";
     const activityNameLower = activity.name?.toLowerCase() || "";
 
